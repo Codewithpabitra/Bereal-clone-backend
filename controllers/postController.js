@@ -1,6 +1,7 @@
 const Post = require("../models/Post");
 const User = require("../models/User");
 const Analytics = require("../models/Analytics");
+const createNotification = require("../utils/createNotification");
 
 // GET /api/posts/feed
 exports.getFeed = async (req, res) => {
@@ -42,7 +43,7 @@ exports.createPost = async (req, res) => {
       {
         arrayFilters: [{ "d.date": today }],
         upsert: true,
-      }
+      },
     );
 
     res.status(201).json(post);
@@ -76,14 +77,28 @@ exports.likePost = async (req, res) => {
     const isLiked = post.likes.includes(userId);
 
     if (isLiked) {
-      post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
+      post.likes = post.likes.filter(
+        (id) => id.toString() !== userId.toString(),
+      );
       await User.findByIdAndUpdate(userId, { $pull: { likedPosts: post._id } });
     } else {
       post.likes.push(userId);
-      await User.findByIdAndUpdate(userId, { $addToSet: { likedPosts: post._id } });
+      await User.findByIdAndUpdate(userId, {
+        $addToSet: { likedPosts: post._id },
+      });
     }
 
     await post.save();
+
+    if (!isLiked) {
+      await createNotification({
+        recipient: post.user,
+        sender: req.user._id,
+        type: "like",
+        post: post._id,
+        message: `${req.user.name} liked your post`,
+      });
+    }
     res.json({ liked: !isLiked, likeCount: post.likes.length });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -94,20 +109,29 @@ exports.likePost = async (req, res) => {
 exports.repostPost = async (req, res) => {
   try {
     const originalPost = await Post.findById(req.params.id);
-    if (!originalPost) return res.status(404).json({ message: "Post not found" });
+    if (!originalPost)
+      return res.status(404).json({ message: "Post not found" });
 
     const userId = req.user._id;
     const isReposted = originalPost.reposts.includes(userId);
 
     if (isReposted) {
       originalPost.reposts = originalPost.reposts.filter(
-        (id) => id.toString() !== userId.toString()
+        (id) => id.toString() !== userId.toString(),
       );
-      await User.findByIdAndUpdate(userId, { $pull: { repostedPosts: originalPost._id } });
-      await Post.findOneAndDelete({ user: userId, originalPost: originalPost._id, isRepost: true });
+      await User.findByIdAndUpdate(userId, {
+        $pull: { repostedPosts: originalPost._id },
+      });
+      await Post.findOneAndDelete({
+        user: userId,
+        originalPost: originalPost._id,
+        isRepost: true,
+      });
     } else {
       originalPost.reposts.push(userId);
-      await User.findByIdAndUpdate(userId, { $addToSet: { repostedPosts: originalPost._id } });
+      await User.findByIdAndUpdate(userId, {
+        $addToSet: { repostedPosts: originalPost._id },
+      });
       await Post.create({
         user: userId,
         image: originalPost.image,
@@ -118,7 +142,20 @@ exports.repostPost = async (req, res) => {
     }
 
     await originalPost.save();
-    res.json({ reposted: !isReposted, repostCount: originalPost.reposts.length });
+    if (!isReposted) {
+      await createNotification({
+        recipient: originalPost.user,
+        sender: req.user._id,
+        type: "repost",
+        post: originalPost._id,
+        message: `${req.user.name} reposted your post`,
+      });
+    }
+
+    res.json({
+      reposted: !isReposted,
+      repostCount: originalPost.reposts.length,
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -132,7 +169,9 @@ exports.sharePost = async (req, res) => {
 
     post.shareCount += 1;
     await post.save();
-    await User.findByIdAndUpdate(req.user._id, { $addToSet: { sharedPosts: post._id } });
+    await User.findByIdAndUpdate(req.user._id, {
+      $addToSet: { sharedPosts: post._id },
+    });
 
     res.json({ shareCount: post.shareCount });
   } catch (err) {

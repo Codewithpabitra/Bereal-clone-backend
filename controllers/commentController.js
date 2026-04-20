@@ -1,4 +1,5 @@
 const Comment = require("../models/Comment");
+const createNotification = require("../utils/createNotification");
 
 exports.getComments = async (req, res) => {
   try {
@@ -21,6 +22,17 @@ exports.addComment = async (req, res) => {
       user: req.user._id,
       text,
     });
+
+    const post = await require("../models/Post").findById(req.params.postId);
+    if (post) {
+      await createNotification({
+        recipient: post.user,
+        sender: req.user._id,
+        type: "comment",
+        post: post._id,
+        message: `${req.user.name} commented on your post`,
+      });
+    }
 
     const populated = await comment.populate("user", "name avatar");
     res.status(201).json(populated);
