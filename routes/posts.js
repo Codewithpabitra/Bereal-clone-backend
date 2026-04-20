@@ -13,4 +13,5 @@ router.delete("/:id", protect, deletePost);
 router.put("/:id/like", protect, likePost);
 router.put("/:id/repost", protect, repostPost);
 router.put("/:id/share", protect, sharePost);
+router.get("/explore", protect, require("../controllers/postController").getExplore);
 module.exports = router;

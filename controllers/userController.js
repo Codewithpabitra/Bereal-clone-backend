@@ -84,3 +84,22 @@ exports.getRepostedPosts = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// GET /api/users/search?q=john
+exports.searchUsers = async (req, res) => {
+  try {
+    const query = req.query.q;
+    if (!query) return res.json([]);
+
+    const users = await User.find({
+      name: { $regex: query, $options: "i" },
+      _id: { $ne: req.user._id }, // exclude self
+    })
+      .select("name avatar bio followers")
+      .limit(20);
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

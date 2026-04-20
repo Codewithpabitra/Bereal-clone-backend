@@ -3,9 +3,17 @@ const SavedPost = require("../models/SavedPost");
 exports.getSaved = async (req, res) => {
   try {
     const saved = await SavedPost.find({ user: req.user._id })
-      .populate({ path: "post", populate: { path: "user", select: "name avatar" } })
+      .populate({
+        path: "post",
+        populate: { path: "user", select: "name avatar" },
+      })
       .sort({ createdAt: -1 });
-    res.json(saved.map((s) => s.post));
+
+    const validPosts = saved
+      .map((s) => s.post)
+      .filter((post) => post !== null);
+
+    res.json(validPosts);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

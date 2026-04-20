@@ -139,3 +139,17 @@ exports.sharePost = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// GET /api/posts/explore
+exports.getExplore = async (req, res) => {
+  try {
+    const now = new Date();
+    const posts = await Post.find({ expiresAt: { $gt: now } })
+      .populate("user", "name avatar")
+      .sort({ likes: -1, createdAt: -1 }) // most liked first
+      .limit(50);
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
