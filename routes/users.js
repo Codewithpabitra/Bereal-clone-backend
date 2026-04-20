@@ -19,5 +19,6 @@ router.get("/:id", protect, getProfile);
 router.put("/:id/follow", protect, followUser);
 router.get("/:id/liked", protect, getLikedPosts);
 router.get("/:id/reposts", protect, getRepostedPosts);
+router.get("/:id/posts", protect, require("../controllers/userController").getUserPosts);
 
 module.exports = router;

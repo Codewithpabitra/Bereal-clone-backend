@@ -113,3 +113,15 @@ exports.searchUsers = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.getUserPosts = async (req, res) => {
+  try {
+    const posts = await require("../models/Post")
+      .find({ user: req.params.id })
+      .populate("user", "name avatar")
+      .sort({ createdAt: -1 });
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
