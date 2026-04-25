@@ -129,3 +129,24 @@ exports.getUserPosts = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// give suggested users
+// GET /api/users/suggested
+exports.getSuggestedUsers = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user._id);
+    const following = currentUser.following.map((id) => id.toString());
+    following.push(req.user._id.toString()); // exclude self
+
+    const suggested = await User.find({
+      _id: { $nin: following }, // not already following
+    })
+      .select("name avatar bio followers")
+      .limit(6)
+      .sort({ followers: -1 }); // most followed first
+
+    res.json(suggested);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

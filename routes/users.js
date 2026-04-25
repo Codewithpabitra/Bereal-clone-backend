@@ -8,11 +8,13 @@ const {
   getLikedPosts,
   getRepostedPosts,
   searchUsers,
+  getSuggestedUsers
 } = require("../controllers/userController");
 
 // Static routes FIRST — before any /:id routes
 router.get("/search", protect, searchUsers);
 router.put("/profile", protect, upload.single("avatar"), updateProfile);
+router.get("/suggested", protect, getSuggestedUsers);
 
 // Dynamic :id routes AFTER
 router.get("/:id", protect, getProfile);
