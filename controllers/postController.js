@@ -23,10 +23,19 @@ exports.createPost = async (req, res) => {
     const image = req.file ? req.file.path : null;
     if (!image) return res.status(400).json({ message: "Image is required" });
 
+    const caption = req.body.caption || "";
+
+    // Extract hashtags from caption
+    const hashtags = caption
+      .match(/#[a-zA-Z0-9_]+/g)
+      ?.map((tag) => tag.toLowerCase()) || [];
+
+
     const post = await Post.create({
       user: req.user._id,
       image,
-      caption: req.body.caption || "",
+      caption,
+      hashtags
     });
 
     // ✅ Update streak
@@ -241,6 +250,56 @@ exports.getArchive = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(posts);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// get posts on searching hashtags
+// GET /api/posts/hashtag/:tag
+exports.getPostsByHashtag = async (req, res) => {
+  try {
+    const tag = `#${req.params.tag.toLowerCase()}`;
+    const now = new Date();
+
+    const posts = await Post.find({
+      hashtags: tag,
+      expiresAt: { $gt: now }, // only active posts
+    })
+      .populate("user", "name avatar")
+      .sort({ createdAt: -1 });
+
+    res.json({ tag, posts, count: posts.length });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// get all the trending hashtags
+// GET /api/posts/trending-hashtags
+exports.getTrendingHashtags = async (req, res) => {
+  try {
+    const now = new Date();
+    const posts = await Post.find({ expiresAt: { $gt: now } })
+      .select("hashtags");
+
+    // Count hashtag frequency
+    const counts = {};
+    posts.forEach((post) => {
+      post.hashtags.forEach((tag) => {
+        counts[tag] = (counts[tag] || 0) + 1;
+      });
+    });
+
+    // Sort by frequency
+    const trending = Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+
+    res.json(trending);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
