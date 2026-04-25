@@ -13,6 +13,11 @@ const userSchema = new mongoose.Schema(
     repostedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     sharedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     memberSince: { type: Date, default: Date.now },
+
+    //Streak fields
+    currentStreak: { type: Number, default: 0 },
+    longestStreak: { type: Number, default: 0 },
+    lastPostedDate: { type: String, default: "" },
   },
   { timestamps: true }
 );

@@ -20,7 +20,7 @@ exports.getFeed = async (req, res) => {
 // POST /api/posts
 exports.createPost = async (req, res) => {
   try {
-    const image = req.file ? `/uploads/${req.file.filename}` : null;
+    const image = req.file ? req.file.path : null;
     if (!image) return res.status(400).json({ message: "Image is required" });
 
     const post = await Post.create({
@@ -29,22 +29,57 @@ exports.createPost = async (req, res) => {
       caption: req.body.caption || "",
     });
 
-    // Update analytics
+    // ✅ Update streak
     const today = new Date().toISOString().split("T")[0];
+    const user = await User.findById(req.user._id);
+    const last = user.lastPostedDate;
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    let newStreak = user.currentStreak;
+
+    if (last === today) {
+      // Already posted today — streak unchanged
+    } else if (last === yesterdayStr) {
+      // Posted yesterday — increment streak
+      newStreak += 1;
+    } else {
+      // Missed a day — reset streak
+      newStreak = 1;
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      currentStreak: newStreak,
+      longestStreak: Math.max(newStreak, user.longestStreak),
+      lastPostedDate: today,
+    });
+
+    // Update analytics
     const month = today.slice(0, 7);
     const year = today.slice(0, 4);
 
-    await Analytics.findOneAndUpdate(
-      { user: req.user._id },
-      {
-        $inc: { totalPosts: 1 },
-        $inc: { "dailyPosts.$[d].count": 1 },
-      },
-      {
-        arrayFilters: [{ "d.date": today }],
-        upsert: true,
-      },
-    );
+    const analytics = await Analytics.findOne({ user: req.user._id });
+    if (analytics) {
+      // Daily
+      const dayEntry = analytics.dailyPosts.find((d) => d.date === today);
+      if (dayEntry) dayEntry.count += 1;
+      else analytics.dailyPosts.push({ date: today, count: 1 });
+
+      // Monthly
+      const monthEntry = analytics.monthlyPosts.find((m) => m.month === month);
+      if (monthEntry) monthEntry.count += 1;
+      else analytics.monthlyPosts.push({ month, count: 1 });
+
+      // Yearly
+      const yearEntry = analytics.yearlyPosts.find((y) => y.year === year);
+      if (yearEntry) yearEntry.count += 1;
+      else analytics.yearlyPosts.push({ year, count: 1 });
+
+      analytics.totalPosts += 1;
+      await analytics.save();
+    }
 
     res.status(201).json(post);
   } catch (err) {
@@ -187,6 +222,24 @@ exports.getExplore = async (req, res) => {
       .populate("user", "name avatar")
       .sort({ likes: -1, createdAt: -1 }) // most liked first
       .limit(50);
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// GET /api/posts/archive — my expired posts
+exports.getArchive = async (req, res) => {
+  try {
+    const now = new Date();
+    const posts = await Post.find({
+      user: req.user._id,
+      expiresAt: { $lt: now }, // expired posts only
+    })
+      .populate("user", "name avatar")
+      .sort({ createdAt: -1 });
+
     res.json(posts);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
