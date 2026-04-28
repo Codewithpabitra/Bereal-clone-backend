@@ -32,13 +32,12 @@ exports.createPost = async (req, res) => {
     if (!image) return res.status(400).json({ message: "Image is required" });
 
     const caption = req.body.caption || "";
-    const hashtags = caption
-      .match(/#[a-zA-Z0-9_]+/g)
-      ?.map((tag) => tag.toLowerCase()) || [];
+    const hashtags =
+      caption.match(/#[a-zA-Z0-9_]+/g)?.map((tag) => tag.toLowerCase()) || [];
 
     const post = await Post.create({
       user: req.user._id,
-      image,  //full Cloudinary URL like https://res.cloudinary.com/...
+      image, //full Cloudinary URL like https://res.cloudinary.com/...
       caption,
       hashtags,
     });
@@ -72,17 +71,17 @@ exports.createPost = async (req, res) => {
     const year = today.slice(0, 4);
     const analytics = await Analytics.findOne({ user: req.user._id });
     if (analytics) {
-      // daily 
+      // daily
       const dayEntry = analytics.dailyPosts.find((d) => d.date === today);
       if (dayEntry) dayEntry.count += 1;
       else analytics.dailyPosts.push({ date: today, count: 1 });
 
-      // monthly 
+      // monthly
       const monthEntry = analytics.monthlyPosts.find((m) => m.month === month);
       if (monthEntry) monthEntry.count += 1;
       else analytics.monthlyPosts.push({ month, count: 1 });
 
-      // yearly 
+      // yearly
       const yearEntry = analytics.yearlyPosts.find((y) => y.year === year);
       if (yearEntry) yearEntry.count += 1;
       else analytics.yearlyPosts.push({ year, count: 1 });
@@ -90,6 +89,16 @@ exports.createPost = async (req, res) => {
       analytics.totalPosts += 1;
       await analytics.save();
     }
+
+    // // ✅ Broadcast new post to all connected users
+    // const io = req.app.get("io");
+    // if (io) {
+    //   const populatedPost = await Post.findById(post._id).populate(
+    //     "user",
+    //     "name avatar",
+    //   );
+    //   io.emit("post:new", populatedPost);
+    // }
 
     res.status(201).json(post);
   } catch (err) {
@@ -136,7 +145,7 @@ exports.likePost = async (req, res) => {
     await post.save();
 
     if (!isLiked) {
-      await createNotification({
+      await createNotification(req.app, {
         recipient: post.user,
         sender: req.user._id,
         type: "like",
@@ -188,7 +197,7 @@ exports.repostPost = async (req, res) => {
 
     await originalPost.save();
     if (!isReposted) {
-      await createNotification({
+      await createNotification(req.app, {
         recipient: originalPost.user,
         sender: req.user._id,
         type: "repost",
@@ -238,7 +247,6 @@ exports.getExplore = async (req, res) => {
   }
 };
 
-
 // GET /api/posts/archive — my expired posts
 exports.getArchive = async (req, res) => {
   try {
@@ -255,7 +263,6 @@ exports.getArchive = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // get posts on searching hashtags
 // GET /api/posts/hashtag/:tag
@@ -277,14 +284,14 @@ exports.getPostsByHashtag = async (req, res) => {
   }
 };
 
-
 // get all the trending hashtags
 // GET /api/posts/trending-hashtags
 exports.getTrendingHashtags = async (req, res) => {
   try {
     const now = new Date();
-    const posts = await Post.find({ expiresAt: { $gt: now } })
-      .select("hashtags");
+    const posts = await Post.find({ expiresAt: { $gt: now } }).select(
+      "hashtags",
+    );
 
     // Count hashtag frequency
     const counts = {};

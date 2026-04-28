@@ -2,7 +2,6 @@ const User = require("../models/User");
 const Post = require("../models/Post");
 const createNotification = require("../utils/createNotification");
 
-
 // GET /api/users/:id
 exports.getProfile = async (req, res) => {
   try {
@@ -33,7 +32,7 @@ exports.updateProfile = async (req, res) => {
         ...(bio !== undefined && { bio }),
         ...(avatar && { avatar }),
       },
-      { new: true }
+      { new: true },
     ).select("-password");
 
     res.json(updated);
@@ -54,13 +53,21 @@ exports.followUser = async (req, res) => {
     const isFollowing = target.followers.includes(req.user._id);
 
     if (isFollowing) {
-      await User.findByIdAndUpdate(req.params.id, { $pull: { followers: req.user._id } });
-      await User.findByIdAndUpdate(req.user._id, { $pull: { following: req.params.id } });
+      await User.findByIdAndUpdate(req.params.id, {
+        $pull: { followers: req.user._id },
+      });
+      await User.findByIdAndUpdate(req.user._id, {
+        $pull: { following: req.params.id },
+      });
     } else {
-      await User.findByIdAndUpdate(req.params.id, { $addToSet: { followers: req.user._id } });
-      await User.findByIdAndUpdate(req.user._id, { $addToSet: { following: req.params.id } });
+      await User.findByIdAndUpdate(req.params.id, {
+        $addToSet: { followers: req.user._id },
+      });
+      await User.findByIdAndUpdate(req.user._id, {
+        $addToSet: { following: req.params.id },
+      });
 
-       await createNotification({
+      await createNotification(req.app, {
         recipient: req.params.id,
         sender: req.user._id,
         type: "follow",

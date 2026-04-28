@@ -5,8 +5,10 @@ const Post = require("../models/Post");
 // GET /api/reactions/:postId
 exports.getReactions = async (req, res) => {
   try {
-    const reactions = await Reaction.find({ post: req.params.postId })
-      .populate("user", "name avatar");
+    const reactions = await Reaction.find({ post: req.params.postId }).populate(
+      "user",
+      "name avatar",
+    );
 
     // Group by emoji
     const grouped = reactions.reduce((acc, r) => {
@@ -58,7 +60,7 @@ exports.toggleReaction = async (req, res) => {
     // Notify post owner
     const post = await Post.findById(req.params.postId);
     if (post) {
-      await createNotification({
+      await createNotification(req.app, {
         recipient: post.user,
         sender: req.user._id,
         type: "like",

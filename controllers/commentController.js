@@ -25,7 +25,7 @@ exports.addComment = async (req, res) => {
 
     const post = await require("../models/Post").findById(req.params.postId);
     if (post) {
-      await createNotification({
+      await createNotification(req.app, {
         recipient: post.user,
         sender: req.user._id,
         type: "comment",
