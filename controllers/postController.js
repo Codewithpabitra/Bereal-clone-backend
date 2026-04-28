@@ -7,10 +7,17 @@ const createNotification = require("../utils/createNotification");
 exports.getFeed = async (req, res) => {
   try {
     const now = new Date();
-    const posts = await Post.find({ expiresAt: { $gt: now } })
+    const currentUser = await User.findById(req.user._id);
+    const blockedUsers = currentUser.blockedUsers || [];
+
+    const posts = await Post.find({
+      expiresAt: { $gt: now },
+      user: { $nin: blockedUsers }, // exclude blocked users' posts
+    })
       .populate("user", "name avatar")
       .populate("originalPost")
       .sort({ createdAt: -1 });
+
     res.json(posts);
   } catch (err) {
     res.status(500).json({ message: "Server error" });

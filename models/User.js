@@ -13,13 +13,16 @@ const userSchema = new mongoose.Schema(
     repostedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     sharedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     memberSince: { type: Date, default: Date.now },
+    // report / block 
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    isBlocked: { type: Boolean, default: false }, // admin can disable accounts
 
     //Streak fields
     currentStreak: { type: Number, default: 0 },
     longestStreak: { type: Number, default: 0 },
     lastPostedDate: { type: String, default: "" },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("User", userSchema);

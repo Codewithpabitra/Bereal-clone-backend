@@ -24,6 +24,7 @@ app.use("/api/saved", require("./routes/saved"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/reactions", require("./routes/reactions"));
+app.use("/api/reports", require("./routes/reports"));
 
 app.get("/", (req, res) => res.json({ message: "BeReal Clone API ✅" }));
 
