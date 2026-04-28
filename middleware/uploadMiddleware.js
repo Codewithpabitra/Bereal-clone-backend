@@ -1,23 +1,43 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 
-// Make sure uploads folder exists
-const uploadDir = "uploads/";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+// Post image storage
+const postStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "candid/posts",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [
+      { width: 1080, height: 1080, crop: "limit" }, // max 1080x1080
+      { quality: "auto" },                           // auto compress
+      { fetch_format: "auto" },                      // auto format (webp if supported)
+    ],
+  },
+});
+
+// Avatar image storage
+const avatarStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "candid/avatars",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [
+      { width: 400, height: 400, crop: "fill", gravity: "face" }, // face-crop for avatars
+      { quality: "auto" },
+      { fetch_format: "auto" },
+    ],
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  // ✅ Check only mimetype — much more reliable
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
@@ -25,10 +45,8 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-});
+// Two separate upload middlewares
+const uploadPost = multer({ storage: postStorage, fileFilter });
+const uploadAvatar = multer({ storage: avatarStorage, fileFilter });
 
-module.exports = upload;
+module.exports = { uploadPost, uploadAvatar };

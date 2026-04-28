@@ -22,7 +22,9 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, bio } = req.body;
-    const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+    //Cloudinary gives full URL in req.file.path
+    const avatar = req.file ? req.file.path : undefined;
 
     const updated = await User.findByIdAndUpdate(
       req.user._id,

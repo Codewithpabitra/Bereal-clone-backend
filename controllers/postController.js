@@ -20,25 +20,23 @@ exports.getFeed = async (req, res) => {
 // POST /api/posts
 exports.createPost = async (req, res) => {
   try {
+    //Cloudinary gives full URL in req.file.path
     const image = req.file ? req.file.path : null;
     if (!image) return res.status(400).json({ message: "Image is required" });
 
     const caption = req.body.caption || "";
-
-    // Extract hashtags from caption
     const hashtags = caption
       .match(/#[a-zA-Z0-9_]+/g)
       ?.map((tag) => tag.toLowerCase()) || [];
 
-
     const post = await Post.create({
       user: req.user._id,
-      image,
+      image,  //full Cloudinary URL like https://res.cloudinary.com/...
       caption,
-      hashtags
+      hashtags,
     });
 
-    // ✅ Update streak
+    // Streak logic
     const today = new Date().toISOString().split("T")[0];
     const user = await User.findById(req.user._id);
     const last = user.lastPostedDate;
@@ -48,14 +46,11 @@ exports.createPost = async (req, res) => {
     const yesterdayStr = yesterday.toISOString().split("T")[0];
 
     let newStreak = user.currentStreak;
-
     if (last === today) {
-      // Already posted today — streak unchanged
+      // already posted today
     } else if (last === yesterdayStr) {
-      // Posted yesterday — increment streak
       newStreak += 1;
     } else {
-      // Missed a day — reset streak
       newStreak = 1;
     }
 
@@ -65,23 +60,22 @@ exports.createPost = async (req, res) => {
       lastPostedDate: today,
     });
 
-    // Update analytics
+    // Analytics
     const month = today.slice(0, 7);
     const year = today.slice(0, 4);
-
     const analytics = await Analytics.findOne({ user: req.user._id });
     if (analytics) {
-      // Daily
+      // daily 
       const dayEntry = analytics.dailyPosts.find((d) => d.date === today);
       if (dayEntry) dayEntry.count += 1;
       else analytics.dailyPosts.push({ date: today, count: 1 });
 
-      // Monthly
+      // monthly 
       const monthEntry = analytics.monthlyPosts.find((m) => m.month === month);
       if (monthEntry) monthEntry.count += 1;
       else analytics.monthlyPosts.push({ month, count: 1 });
 
-      // Yearly
+      // yearly 
       const yearEntry = analytics.yearlyPosts.find((y) => y.year === year);
       if (yearEntry) yearEntry.count += 1;
       else analytics.yearlyPosts.push({ year, count: 1 });

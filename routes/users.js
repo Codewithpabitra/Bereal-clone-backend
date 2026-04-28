@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const protect = require("../middleware/authMiddleware");
-const upload = require("../middleware/uploadMiddleware");
+const { uploadAvatar } = require("../middleware/uploadMiddleware");
 const {
   getProfile,
   updateProfile,
@@ -13,8 +13,8 @@ const {
 
 // Static routes FIRST — before any /:id routes
 router.get("/search", protect, searchUsers);
-router.put("/profile", protect, upload.single("avatar"), updateProfile);
 router.get("/suggested", protect, getSuggestedUsers);
+router.put("/profile", protect, uploadAvatar.single("avatar"), updateProfile);
 
 // Dynamic :id routes AFTER
 router.get("/:id", protect, getProfile);

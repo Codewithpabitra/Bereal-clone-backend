@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const protect = require("../middleware/authMiddleware");
-const upload = require("../middleware/uploadMiddleware");
+const { uploadPost } = require("../middleware/uploadMiddleware");
 const {
   getFeed,
   createPost,
@@ -18,9 +18,10 @@ const {
 router.get("/feed", protect, getFeed);
 router.get("/archive", protect, getArchive);
 router.get("/explore", protect, getExplore);
-router.post("/", protect, upload.single("image"), createPost);
 router.get("/hashtag/:tag", protect, getPostsByHashtag);
 router.get("/trending-hashtags", protect, getTrendingHashtags);
+
+router.post("/", protect, uploadPost.single("image"), createPost);
 
 // ✅ Dynamic :id routes LAST
 router.delete("/:id", protect, deletePost);
