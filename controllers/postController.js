@@ -369,3 +369,44 @@ exports.getLeaderboard = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+
+// GET /api/posts/memories
+exports.getMemories = async (req, res) => {
+  try {
+    const memories = [];
+    const today = new Date();
+
+    // Check 1 year ago, 2 years ago, 3 years ago
+    for (let yearsAgo = 1; yearsAgo <= 3; yearsAgo++) {
+      const targetDate = new Date(today);
+      targetDate.setFullYear(today.getFullYear() - yearsAgo);
+
+      // Start and end of that day
+      const dayStart = new Date(targetDate);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(targetDate);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const posts = await Post.find({
+        user: req.user._id,
+        createdAt: { $gte: dayStart, $lte: dayEnd },
+      })
+        .populate("user", "name avatar")
+        .sort({ likes: -1 });
+
+      if (posts.length > 0) {
+        memories.push({
+          yearsAgo,
+          date: targetDate,
+          posts,
+        });
+      }
+    }
+
+    res.json(memories);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
