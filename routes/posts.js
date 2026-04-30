@@ -11,7 +11,8 @@ const {
   getArchive,
   getExplore,
   getPostsByHashtag,
-  getTrendingHashtags
+  getTrendingHashtags,
+  getLeaderboard
 } = require("../controllers/postController");
 
 // ✅ Static routes FIRST
@@ -20,6 +21,7 @@ router.get("/archive", protect, getArchive);
 router.get("/explore", protect, getExplore);
 router.get("/hashtag/:tag", protect, getPostsByHashtag);
 router.get("/trending-hashtags", protect, getTrendingHashtags);
+router.get("/leaderboard", protect, getLeaderboard);
 
 router.post("/", protect, uploadPost.single("image"), createPost);
 

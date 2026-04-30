@@ -312,3 +312,60 @@ exports.getTrendingHashtags = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// GET /api/posts/leaderboard
+exports.getLeaderboard = async (req, res) => {
+  try {
+    // Get start of current week (Monday)
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - daysFromMonday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // Get all posts from this week (including expired ones)
+    const posts = await Post.find({
+      createdAt: { $gte: weekStart },
+      isRepost: false, // only original posts
+    })
+      .populate("user", "name avatar")
+      .sort({ likes: -1 }); // most liked first
+
+    // Sort by like count and take top 10
+    const leaderboard = posts
+      .sort((a, b) => b.likes.length - a.likes.length)
+      .slice(0, 10)
+      .map((post, index) => ({
+        rank: index + 1,
+        post: {
+          _id: post._id,
+          image: post.image,
+          caption: post.caption,
+          likes: post.likes,
+          createdAt: post.createdAt,
+          expiresAt: post.expiresAt,
+          isRepost: post.isRepost,
+          reposts: post.reposts,
+          shareCount: post.shareCount,
+        },
+        user: post.user,
+        likeCount: post.likes.length,
+      }));
+
+    // Week end date
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    res.json({
+      leaderboard,
+      weekStart,
+      weekEnd,
+      totalPosts: posts.length,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
